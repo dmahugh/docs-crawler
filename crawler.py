@@ -10,10 +10,12 @@ import requests
 
 # configuration options
 OUTPUT_FILE = "pages_visited.csv"
-STARTPAGE = f"https://cloud.google.com/sql/docs/"
+#STARTPAGE = "https://cloud.google.com/sql/docs/"
+STARTPAGE = "https://cloud.google.com/sql/docs/sqlserver/admin-api/"
 # Only pages in the SUBPATH path under the root domain of STARTPAGE will be
 # visited, to avoid crawling content external to our docs pages. 
-SUBPATH=f"/sql/docs"
+#SUBPATH="/sql/docs"
+SUBPATH="/sql/docs/sqlserver"
 PAGE_LIMIT = 999 # set to a lower number for quick testing/verification
 
 def crawler(startpage, maxpages=100, singledomain=True, subpath=None) -> None:
