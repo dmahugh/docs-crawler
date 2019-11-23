@@ -1,4 +1,4 @@
-"""Crawl all Cloud SQL documentation pages and write them to temp.csv.
+"""Crawl all Cloud SQL documentation pages and summarize Windows readiness.
 """
 import collections
 import string
@@ -9,14 +9,16 @@ import bs4
 import requests
 
 # configuration options
-OUTPUT_FILE = "pages_visited.csv"
-CATEGORY = "sql" # can be sql, storage, bigquery, bigtable, datastore, etc.
+OUTPUT_FILE = "Cloud_SQL_Windows_Readiness.csv"
+CATEGORY = "sql"  # can be sql, storage, bigquery, bigtable, datastore, etc.
 STARTPAGE = f"https://cloud.google.com/{CATEGORY}/docs/"
 # Only pages in the SUBPATH path under the root domain of STARTPAGE will be
-# visited, to avoid crawling content external to our docs pages. 
-SUBPATH=f"/{CATEGORY}/docs"
-PAGE_LIMIT = 999 # set to a lower number for quick testing/verification
+# visited, to avoid crawling content external to our docs pages.
+SUBPATH = f"/{CATEGORY}/docs"
+PAGE_LIMIT = 999  # set to a lower number for quick testing/verification
 
+FROM_TO = set() # set of links crawled, as (from_url, to_url) tuples
+NOT_FOUND = set() # set of links that were not found
 
 def crawler(startpage, maxpages=999, singledomain=True, subpath=None) -> None:
     """Crawl the web starting from specified page.
@@ -33,12 +35,14 @@ def crawler(startpage, maxpages=999, singledomain=True, subpath=None) -> None:
     """
     domain = urlparse(startpage).netloc if singledomain else None
 
-    crawled = set() # pages already crawled
-    failed = 0 # number of links that couldn't be crawled
+    crawled = set()  # pages already crawled
+    failed = 0  # number of links that couldn't be crawled
 
     # create output file and write header row
     with open(OUTPUT_FILE, "w") as fhandle:
-        fhandle.write(f"Page Title,URL\n")
+        fhandle.write(
+            "Page Title,Windows,PowerShell,Bash,Curl,Gcloud,Unix socket,TCP,drest,URL\n"
+        )
 
     pagequeue: collections.deque = collections.deque()
     pagequeue.append(startpage)
@@ -48,7 +52,7 @@ def crawler(startpage, maxpages=999, singledomain=True, subpath=None) -> None:
         url = pagequeue.popleft()  # next page to crawl (FIFO queue)
 
         try:
-            response = sess.get(url) # read the page
+            response = sess.get(url)  # read the page
         except (requests.exceptions.MissingSchema, requests.exceptions.InvalidSchema):
             print("*FAILED*:", url)
             failed += 1
@@ -57,6 +61,9 @@ def crawler(startpage, maxpages=999, singledomain=True, subpath=None) -> None:
             continue  # don't crawl non-HTML content
 
         soup = bs4.BeautifulSoup(response.text, "html.parser")
+
+        if soup.title.string == "Page Not Found":
+            NOT_FOUND.add(url)
 
         # process the page
         crawled.add(url)
@@ -113,7 +120,18 @@ def getlinks(pageurl, domain, subpath, soup):
                 link for link in links if samedomain(urlparse(link).netloc, domain)
             ]
 
+    # add these links to FROM_TO
+    for link in links:
+        FROM_TO.add((pageurl, link))
+
     return links
+
+
+def word_count(fulltext, searchfor):
+    """Search a text string (such as page content) for a substring,
+    and return the # occurences as a string, with "" for 0 occurences."""
+    occurs = fulltext.count(searchfor)
+    return str(occurs) if occurs else ""
 
 
 def pagehandler(pageurl, pageresponse, soup):
@@ -133,9 +151,28 @@ def pagehandler(pageurl, pageresponse, soup):
     full_title = soup.title.string
     page_title = full_title.split("|")[0].strip() if "|" in full_title else full_title
 
+    # search for the strings we're interested in
+    pagetext = soup.get_text().lower()
+    windows = word_count(pagetext, "windows")
+    powershell = word_count(pagetext, "powershell")
+    bash = word_count(pagetext, "bash")
+    curl = word_count(pagetext, "curl")
+    gcloud = word_count(pagetext, "gcloud")
+    socket = word_count(pagetext, "unix socket")
+    tcp = word_count(pagetext, "tcp")
+    if (
+        "curl (Linux, macOS, or Cloud Shell)".lower() in pagetext
+        and "PowerShell (Windows)" in pagetext
+    ):
+        drest = "Yes"
+    else:
+        drest = ""
+
     print(f"{pageurl[:60]:60} {page_title}")
     with open(OUTPUT_FILE, "a") as fhandle:
-        fhandle.write(f"{page_title},{pageurl}\n") # append to output file
+        fhandle.write(
+            f"{','.join([page_title, windows, powershell, bash, curl, gcloud, socket, tcp, drest, pageurl])}\n"
+        )
 
 
 def samedomain(netloc1, netloc2):
@@ -177,11 +214,19 @@ def url_in_list(url, url_list):
         url.replace("http://", "https://") in url_list
     )
 
+def write_missing_pages():
+    """Write all dead links found to Cloud_SQL_missing_pages.csv.
+    """
+    with open("Cloud_SQL_missing_pages.csv", "w") as fhandle:
+        fhandle.write("missing,linked_from\n")
+        for BAD_LINK in NOT_FOUND:
+            ROWS = [ROW for ROW in FROM_TO if ROW[1] == BAD_LINK]
+            for ROW in sorted(ROWS, key=lambda row: row[1]) :
+                fhandle.write(f"{ROW[1]},{ROW[0]}\n")
+
 
 if __name__ == "__main__":
     crawler(
-        startpage=STARTPAGE,
-        maxpages=PAGE_LIMIT,
-        singledomain=True,
-        subpath=SUBPATH,
+        startpage=STARTPAGE, maxpages=PAGE_LIMIT, singledomain=True, subpath=SUBPATH
     )
+    write_missing_pages()
