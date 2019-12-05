@@ -9,12 +9,7 @@ from contextlib import suppress
 import os
 import shutil
 
-from faker import Faker
-
 import pyodbc
-
-LOCATIONS = 8  # number of locations
-EMPLOYEES = 4  # number of employees per location
 
 from config import DB_USER, DB_PASS, DB_NAME
 
@@ -29,73 +24,34 @@ CURSOR = CNXN.cursor()
 def create_database(db_name):
     """Create database.
     """
-    try:
+    with suppress(pyodbc.ProgrammingError):
         CURSOR.execute(f"CREATE DATABASE {db_name}")
         CNXN.commit()
-    except:
-        pass  # need to figure out how to use IF DB_ID() from pyodbc
 
-
-def generate_employees(db_name):
-    """Create employee table and populate it with sample data.
+def create_jobdef(db_name):
+    """Create and populate the jobdef table of job definitions.
     """
     CURSOR.execute(f"USE {db_name}")
-    CURSOR.execute("DROP TABLE IF EXISTS employee")
+    CURSOR.execute("DROP TABLE IF EXISTS jobdef")
 
     sql_command = """
-    CREATE TABLE employee (
-    emp_id INT IDENTITY(1,1) PRIMARY KEY,
-    first_name VARCHAR(40),
-    last_name VARCHAR(40),
-    title VARCHAR(80),
-    office_id INT,
-    pwd CHAR(15),
-    ipaddr CHAR(15),
-    ssn CHAR(11));"""
+    CREATE TABLE jobdef (
+    job_id CHAR(20) PRIMARY KEY,
+    start_page VARCHAR(120),
+    single_domain BIT,
+    subpath VARCHAR(120),
+    max_pages INT,
+    active BIT);"""
     CURSOR.execute(sql_command)
 
-    fake = Faker()
-    for office_id in range(1, LOCATIONS + 1):
-        # generate some random employees for each office location
-        for _ in range(EMPLOYEES):
-            first_name = fake.first_name()  # pylint: disable=no-member
-            last_name = fake.last_name()  # pylint: disable=no-member
-            jobtitle = fake.job().split("/")[0]  # pylint: disable=no-member
-            pwd = fake.password()  # pylint: disable=no-member
-            ipaddr = fake.ipv4()  # pylint: disable=no-member
-            ssn = fake.ssn()  # pylint: disable=no-member
-            sql_command = (
-                "INSERT INTO employee "
-                "(first_name, last_name, title, office_id, pwd, ipaddr, ssn) "
-                f"VALUES ('{first_name}', '{last_name}', '{jobtitle}', "
-                f"{office_id}, '{pwd}', '{ipaddr}', '{ssn}')"
-            )
-            CURSOR.execute(sql_command)
-
-    CNXN.commit()
-
-
-def generate_locations(db_name):
-    """Create location table and populate it with sample data.
-    """
-    CURSOR.execute(f"USE {db_name}")
-    CURSOR.execute("DROP TABLE IF EXISTS location")
-
-    sql_command = """
-    CREATE TABLE location (
-    office_id INT IDENTITY(1,1) PRIMARY KEY,
-    address VARCHAR(80),
-    city VARCHAR(40),
-    state CHAR(2));"""
+    job_id = "Cloud SQL docs"
+    start_page = "https://cloud.google.com/sql/docs/"
+    single_domain = 1
+    subpath = "/sql/docs"
+    max_pages = 10
+    active = 1
+    sql_command = f"INSERT INTO jobdef (job_id, start_page, single_domain, subpath, max_pages, active) VALUES ('{job_id}', '{start_page}', '{single_domain}', '{subpath}', '{max_pages}', '{active}')"
     CURSOR.execute(sql_command)
-
-    fake = Faker()
-    for _ in range(LOCATIONS):
-        address = fake.street_address()  # pylint: disable=no-member
-        city = fake.city()  # pylint: disable=no-member
-        state = fake.state_abbr()  # pylint: disable=no-member
-        sql_command = f"INSERT INTO location (address, city, state) VALUES ('{address}', '{city}', '{state}')"
-        CURSOR.execute(sql_command)
 
     CNXN.commit()
 
@@ -109,17 +65,12 @@ def column_names(cursor, table_name):
     return [result[1] for result in results]
 
 
-def company_roster(db_name):
-    """Create and print a company roster from the employee and location tables.
+def print_jobdef(db_name):
+    """Print contents of the jobdef table.
     """
 
-    CURSOR.execute(
-        """SELECT location.city, location.state, employee.first_name,
-    employee.last_name, employee.title
-    FROM employee
-    INNER JOIN location ON employee.office_id=location.office_id;"""
-    )
-    print_table(cursor=CURSOR, title="Company Roster", rows=99)
+    CURSOR.execute("SELECT job_id, start_page FROM jobdef;")
+    print_table(cursor=CURSOR, title="jobdef table", rows=99)
 
 
 def print_database(db_name):
@@ -188,9 +139,8 @@ def main():
     """Create an acme_corp database and populate some tables with random data
     """
     create_database(DB_NAME)
-    generate_locations(DB_NAME)
-    generate_employees(DB_NAME)
-    company_roster(DB_NAME)
+    create_jobdef(DB_NAME)
+    print_jobdef(DB_NAME)
 
 
 if __name__ == "__main__":
