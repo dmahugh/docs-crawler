@@ -1,0 +1,10 @@
+job_id,start_page,single_domain,subpath,max_pages,daily
+"Cloud SQL docs","https://cloud.google.com/sql/docs/",1,"/sql/docs",10,1
+"Storage docs","https://cloud.google.com/storage/docs/",1,"/storage/docs",10,1
+"BigQuery docs","https://cloud.google.com/bigquery/docs/",1,"/bigquery/docs",10,1
+"Bigtable docs","https://cloud.google.com/bigtable/docs/",1,"/bigtable/docs",10,1
+"Datastore docs","https://cloud.google.com/datastore/docs/",1,"/datastore/docs",10,1
+"Cloud Run docs","https://cloud.google.com/run/docs/",1,"/run/docs",10,0
+"App Engine docs","https://cloud.google.com/appengine/docs/",1,"/appengine/docs",10,0
+"Cloud Functions docs","https://cloud.google.com/functions/docs/",1,"/functions/docs",10,0
+"Pub/Sub docs","https://cloud.google.com/pubsub/docs/",1,"/pubsub/docs",10,0
