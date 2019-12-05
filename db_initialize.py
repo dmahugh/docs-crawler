@@ -1,9 +1,4 @@
-"""Initialize the crawler database and jobdef table.
-
-This script runs locally against the cloud SQL proxy, which should be invoked
-with this command:
-cloud_sql_proxy.exe -instances=project:region:instance=tcp:1433 -credential_file=credentials.json
-
+"""Initialize the crawler database.
 """
 import csv
 import os
@@ -68,18 +63,21 @@ def print_jobdef(*, cursor=None, database=None):
 
 
 def main():
-    """Main function.
+    """Create the crawler database and its tables.
     """
-    cursor = pyodbc.connect(
-        "DRIVER={ODBC Driver 17 for SQL Server};SERVER=127.0.0.1;"
-        + f"UID={DB_USER};PWD={DB_PASS}",
-        autocommit=True,
-    ).cursor()
 
-    create_database(cursor=cursor, database=DB_NAME)
-    create_jobdef(cursor=cursor, database=DB_NAME)
-    print_jobdef(cursor=cursor, database=DB_NAME)
-    print_database(cursor=cursor, database=DB_NAME)
+    # Connection string for Cloud SQL Proxy assumes that the proxy is running
+    # locally and was invoked like this:
+    # cloud_sql_proxy.exe -instances=project:region:instance=tcp:1433 -credential_file=credentials.json
+    driver = "ODBC Driver 17 for SQL Server"
+    proxy_addr = "127.0.0.1"
+    conn_str = f"DRIVER={{{driver}}};SERVER={proxy_addr};UID={DB_USER};PWD={DB_PASS}"
+
+    with pyodbc.connect(conn_str, autocommit=True).cursor() as cursor:
+        create_database(cursor=cursor, database=DB_NAME)
+        create_jobdef(cursor=cursor, database=DB_NAME)
+        print_jobdef(cursor=cursor, database=DB_NAME)
+        print_database(cursor=cursor, database=DB_NAME)
 
 if __name__ == "__main__":
     main()
