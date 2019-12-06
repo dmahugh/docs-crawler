@@ -6,8 +6,16 @@ import shutil
 import pyodbc
 
 
-def database_create(*, cursor=None, database=None, drop=False):
+def database_create(*, cursor=None, database=None, drop=False, setup=None):
     """Create database.
+
+    Args:
+        cursor: pyodbc cursor, connected to SQL Server database instance
+        database: name of the database to be created
+        drop: whether to drop any existing database of that name first
+        setup: optional name of file containing SQL commands to be executed
+                   after the database is created. (Typically a list of CREATE
+                   TABLE commands).
     """
     if not cursor:
         raise ValueError("database_create: missing required argument (cursor)")
@@ -20,6 +28,15 @@ def database_create(*, cursor=None, database=None, drop=False):
 
     with suppress(pyodbc.ProgrammingError):
         cursor.execute(f"CREATE DATABASE {database}")
+        cursor.commit()
+
+    if setup:
+        cursor.execute(f"USE {database};")
+        with open(setup, "r") as fhandle:
+            for line in fhandle:
+                sqlcmd = line.strip()
+                if sqlcmd:
+                    cursor.execute(sqlcmd)
         cursor.commit()
 
 
@@ -74,7 +91,7 @@ def table_print(*, table=None, cursor=None, database=None, title=None, rows=10):
         raise ValueError("table_print: missing required argument (cursor)")
 
     if not title:
-        title = "cursor" if cursor else f"{table} table"
+        title = f"{table} table" if table else "cursor"
 
     if table:
         columns = table_columns(cursor=cursor, table=table)

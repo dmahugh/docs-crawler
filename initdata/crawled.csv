@@ -1,5 +1,5 @@
-job_id,page_url
-1,https://cloud.google.com
-1,https://cloud.google.com/sql/docs
-2,https://cloud.google.com
-2,https://cloud.google.com/sql/docs
+job_id,page_url,crawled
+1,https://cloud.google.com,"2009-11-14 11:11:11"
+1,https://cloud.google.com/sql/docs,"2010-08-23 22:22:22"
+2,https://cloud.google.com,""
+2,https://cloud.google.com/sql/docs,

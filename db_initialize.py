@@ -12,11 +12,6 @@ from utils import database_create, database_print, table_print
 
 def crawled_create(*, cursor=None, database=None):
     """Create and populate the crawled table of crawled pages.
-
-    crawled columns:
-    job_id = jobhist.job_id of the crawler job in which this page was crawled
-    page_url = URL of the page
-    crawled = PST timestamp of when the page was crawled
     """
     if not cursor:
         raise ValueError("crawled_create: missing required argument (cursor)")
@@ -24,39 +19,21 @@ def crawled_create(*, cursor=None, database=None):
         raise ValueError("crawled_create: missing required argument (database)")
 
     cursor.execute(f"USE {database}")
-    cursor.execute("DROP TABLE IF EXISTS crawled")
-    cursor.execute(
-        """
-    CREATE TABLE crawled (
-    job_id INT,
-    page_url VARCHAR(120),
-    crawled DATETIMEOFFSET);"""
-    )
-
     with open("initdata\\crawled.csv", "r") as csvfile:
         csvreader = csv.reader(csvfile, delimiter=",", quotechar='"')
         next(csvreader)  # skip header row
         for row in csvreader:
-            job_id, page_url = row
-            sql_command = f"INSERT INTO crawled (job_id, page_url) VALUES ('{job_id}', '{page_url}')"
+            job_id, page_url, crawled = row
+            sql_command = f"INSERT INTO crawled (job_id, page_url, crawled) VALUES ('{job_id}', '{page_url}', '{crawled}')"
             cursor.execute(sql_command)
 
     cursor.commit()
 
-    cursor.execute("SELECT job_id, page_url FROM crawled;")
-    table_print(cursor=cursor, title="crawled table")
+    table_print(cursor=cursor, table="crawled")
 
 
 def jobdef_create(*, cursor=None, database=None):
     """Create and populate the jobdef table of job definitions.
-
-    jobdef columns:
-    jobtype = key field, identifer for this job type
-    start_page = URL of the page from which crawling begins
-    single_domain = whether to only crawl links within startpage's domain (1=True)
-    subpath = optional; if specified, crawling is limited to this subpath of the domain
-    max_pages = maximum number of pages to crawl
-    daily = whether to run this job type every day (1=True)
     """
     if not cursor:
         raise ValueError("jobdef_create: missing required argument (cursor)")
@@ -64,18 +41,6 @@ def jobdef_create(*, cursor=None, database=None):
         raise ValueError("jobdef_create: missing required argument (database)")
 
     cursor.execute(f"USE {database}")
-    cursor.execute("DROP TABLE IF EXISTS jobdef")
-    cursor.execute(
-        """
-    CREATE TABLE jobdef (
-    jobtype CHAR(20) PRIMARY KEY,
-    start_page VARCHAR(120),
-    single_domain BIT,
-    subpath VARCHAR(120),
-    max_pages INT,
-    daily BIT);"""
-    )
-
     with open("initdata\\jobdef.csv", "r") as csvfile:
         csvreader = csv.reader(csvfile, delimiter=",", quotechar='"')
         next(csvreader)  # skip header row
@@ -86,23 +51,11 @@ def jobdef_create(*, cursor=None, database=None):
 
     cursor.commit()
 
-    cursor.execute("SELECT * FROM jobdef ORDER BY daily, jobtype;")
-    table_print(cursor=cursor, title="jobdef table")
+    table_print(cursor=cursor, table="jobdef")
 
 
 def jobhist_create(*, cursor=None, database=None):
     """Create and populate the jobhist table of crawler job executions.
-
-    jobhist columns:
-    job_id = unique identifer for this job run
-    jobtype = jobdef.jobtype value for this job type definition
-    queued = PST datetime of when this job was added to the queue
-    jobstart = PST datetime of when job execution started
-    jobend = PST datetime of when job execution ended
-    elapsed = total seconds of execution time
-    links = total links crawled
-    pages = total pages crawled
-    missing = total links to missing pages
     """
     if not cursor:
         raise ValueError("jobhist_create: missing required argument (cursor)")
@@ -110,21 +63,6 @@ def jobhist_create(*, cursor=None, database=None):
         raise ValueError("jobhist_create: missing required argument (database)")
 
     cursor.execute(f"USE {database}")
-    cursor.execute("DROP TABLE IF EXISTS jobhist")
-    cursor.execute(
-        """
-    CREATE TABLE jobhist (
-    job_id INT IDENTITY(1,1) PRIMARY KEY,
-    jobtype CHAR(20),
-    queued DATETIMEOFFSET,
-    jobstart DATETIMEOFFSET,
-    jobend DATETIMEOFFSET,
-    elapsed INT,
-    links INT,
-    pages INT,
-    missing INT);"""
-    )
-
     with open("initdata\\jobhist.csv", "r") as csvfile:
         csvreader = csv.reader(csvfile, delimiter=",", quotechar='"')
         next(csvreader)  # skip header row
@@ -135,19 +73,11 @@ def jobhist_create(*, cursor=None, database=None):
 
     cursor.commit()
 
-    cursor.execute("SELECT job_id, jobtype, elapsed, links, pages, missing FROM jobhist;")
-    table_print(cursor=cursor, title="jobhist table")
+    table_print(cursor=cursor, table="jobhist")
 
 
 def notfound_create(*, cursor=None, database=None):
     """Create and populate the notfound table of "Page Not Found" links.
-
-    notfound columns:
-    job_id = the jobhist.job_id value for this crawler job
-    found = PST datetime when this broken link was found
-    source = the page linked from
-    target = the page linked to
-    link_text = the display text of the link on the source page
     """
     if not cursor:
         raise ValueError("notfound_create: missing required argument (cursor)")
@@ -155,17 +85,6 @@ def notfound_create(*, cursor=None, database=None):
         raise ValueError("notfound_create: missing required argument (database)")
 
     cursor.execute(f"USE {database}")
-    cursor.execute("DROP TABLE IF EXISTS notfound")
-    cursor.execute(
-        """
-    CREATE TABLE notfound (
-    job_id INT,
-    found DATETIMEOFFSET,
-    source VARCHAR(120),
-    target VARCHAR(120),
-    link_text VARCHAR(120));"""
-    )
-
     with open("initdata\\notfound.csv", "r") as csvfile:
         csvreader = csv.reader(csvfile, delimiter=",", quotechar='"')
         next(csvreader)  # skip header row
@@ -176,8 +95,7 @@ def notfound_create(*, cursor=None, database=None):
 
     cursor.commit()
 
-    cursor.execute("SELECT job_id, source, target, link_text FROM notfound;")
-    table_print(cursor=cursor, title="notfound table")
+    table_print(cursor=cursor, table="notfound")
 
 
 def main():
@@ -192,7 +110,7 @@ def main():
     conn_str = f"DRIVER={{{driver}}};SERVER={proxy_addr};UID={DB_USER};PWD={DB_PASS}"
 
     with pyodbc.connect(conn_str, autocommit=True).cursor() as cursor:
-        database_create(cursor=cursor, database=DB_NAME)
+        database_create(cursor=cursor, database=DB_NAME, drop=True, setup="initdata\\db_setup.sql")
         jobdef_create(cursor=cursor, database=DB_NAME)
         jobhist_create(cursor=cursor, database=DB_NAME)
         notfound_create(cursor=cursor, database=DB_NAME)
