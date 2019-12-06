@@ -35,7 +35,9 @@ def csv_insert(*, cursor=None, database=None, table=None, filename=None):
         fields = next(csvreader)  # header row
         for row in csvreader:
             values = "','".join(row)
-            sql_command = f"INSERT INTO {table} ({','.join(fields)}) VALUES ('{values}')"
+            sql_command = (
+                f"INSERT INTO {table} ({','.join(fields)}) VALUES ('{values}')"
+            )
             cursor.execute(sql_command)
     cursor.commit()
 
@@ -83,13 +85,15 @@ def database_print(*, cursor=None, database=None):
         raise ValueError("database_print: missing required argument (database)")
 
     print(f"\ndatabase: {database}")
-    cursor.execute(f"SELECT TABLE_NAME FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_TYPE = 'BASE TABLE' AND TABLE_CATALOG='{database}';")
+    cursor.execute(
+        f"SELECT TABLE_NAME FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_TYPE = 'BASE TABLE' AND TABLE_CATALOG='{database}';"
+    )
     tables = [_[0] for _ in cursor.fetchall()]
     for table in tables:
         print(f"{table} table: {', '.join(table_columns(cursor=cursor, table=table))}")
 
 
-def table_columns(*, cursor=None,  database=None, table=None):
+def table_columns(*, cursor=None, database=None, table=None):
     """Returns a list of the column names for a table.
     """
     if not cursor:
@@ -100,7 +104,9 @@ def table_columns(*, cursor=None,  database=None, table=None):
     if database:
         cursor.execute(f"USE {database}")
 
-    cursor.execute(f"select * from INFORMATION_SCHEMA.COLUMNS where TABLE_NAME='{table}'")
+    cursor.execute(
+        f"select * from INFORMATION_SCHEMA.COLUMNS where TABLE_NAME='{table}'"
+    )
     results = cursor.fetchall()
     return [result[3] for result in results]
 
@@ -167,5 +173,3 @@ def table_print(*, cursor=None, database=None, table=None, title=None, rows=10):
         print(printed_row[:console_width])
         if row_number >= rows - 1:
             break
-
-
