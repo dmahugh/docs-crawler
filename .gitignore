@@ -1,0 +1,10 @@
+__pycache__/
+.vscode/
+archive/
+research_pocs/
+_todo.txt
+*.bat
+*.exe
+*.json
+*.ps1
+config.py
