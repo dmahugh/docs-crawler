@@ -6,13 +6,13 @@ import shutil
 import pyodbc
 
 
-def create_database(*, cursor=None, database=None, drop=False):
+def database_create(*, cursor=None, database=None, drop=False):
     """Create database.
     """
     if not cursor:
-        raise ValueError("create_database: missing required argument (cursor)")
+        raise ValueError("database_create: missing required argument (cursor)")
     if not database:
-        raise ValueError("create_database: missing required argument (database)")
+        raise ValueError("database_create: missing required argument (database)")
 
     if drop:
         with suppress(pyodbc.ProgrammingError):
@@ -23,13 +23,28 @@ def create_database(*, cursor=None, database=None, drop=False):
         cursor.commit()
 
 
-def column_names(*, cursor=None, table=None, database=None):
+def database_print(*, cursor=None, database=None):
+    """Print a summary of the tables in a database.
+    """
+    if not cursor:
+        raise ValueError("database_print: missing required argument (cursor)")
+    if not database:
+        raise ValueError("database_print: missing required argument (database)")
+
+    print(f"\ndatabase: {database}")
+    cursor.execute(f"SELECT TABLE_NAME FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_TYPE = 'BASE TABLE' AND TABLE_CATALOG='{database}';")
+    tables = [_[0] for _ in cursor.fetchall()]
+    for table in tables:
+        print(f"{table} table: {', '.join(table_columns(cursor=cursor, table=table))}")
+
+
+def table_columns(*, cursor=None, table=None, database=None):
     """Returns a list of the column names for a table.
     """
     if not cursor:
-        raise ValueError("column_names: missing required argument (cursor)")
+        raise ValueError("table_columns: missing required argument (cursor)")
     if not table:
-        raise ValueError("column_names: missing required argument (table)")
+        raise ValueError("table_columns: missing required argument (table)")
 
     if database:
         cursor.execute(f"USE {database}")
@@ -39,22 +54,7 @@ def column_names(*, cursor=None, table=None, database=None):
     return [result[3] for result in results]
 
 
-def print_database(*, cursor=None, database=None):
-    """Print a summary of the tables in a database.
-    """
-    if not cursor:
-        raise ValueError("print_database: missing required argument (cursor)")
-    if not database:
-        raise ValueError("print_database: missing required argument (database)")
-
-    print(f"\ndatabase: {database}")
-    cursor.execute(f"SELECT TABLE_NAME FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_TYPE = 'BASE TABLE' AND TABLE_CATALOG='{database}';")
-    tables = [_[0] for _ in cursor.fetchall()]
-    for table in tables:
-        print(f"{table} table: {', '.join(column_names(cursor=cursor, table=table))}")
-
-
-def print_table(*, table=None, cursor=None, database=None, title=None, rows=10):
+def table_print(*, table=None, cursor=None, database=None, title=None, rows=10):
     """Print contents of a table or cursor to the console. This is for quick
     printing of small result sets for diagnostic purposes, may not work well
     with a large numbers of columns.
@@ -71,13 +71,13 @@ def print_table(*, table=None, cursor=None, database=None, title=None, rows=10):
         rows: maximum number of rows to print
     """
     if not cursor:
-        raise ValueError("print_table: missing required argument (cursor)")
+        raise ValueError("table_print: missing required argument (cursor)")
 
     if not title:
         title = "cursor" if cursor else f"{table} table"
 
     if table:
-        columns = column_names(cursor=cursor, table=table)
+        columns = table_columns(cursor=cursor, table=table)
     else:
         columns = [row[0] for row in cursor.description]
 
