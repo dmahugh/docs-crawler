@@ -1,9 +1,43 @@
 """Utility functions for Cloud SQL and related services.
 """
 from contextlib import suppress
+import csv
 import shutil
 
 import pyodbc
+
+
+def csv_insert(*, cursor=None, database=None, table=None, filename=None):
+    """Insert data from a CSV file into a table.
+
+    Args:
+        cursor: pyodbc cursor, connected to SQL Server database instance
+        database: database name
+        table: table name (table must already exist)
+        filename: name of a CSV file to be imported. Must include a header row,
+                  and each column name in the header must exactly match a
+                  column name in the table.
+    """
+    if not cursor:
+        raise ValueError("csv_insert: missing required argument (cursor)")
+    if not database:
+        raise ValueError("csv_insert: missing required argument (database)")
+    if not database:
+        raise ValueError("csv_insert: missing required argument (database)")
+    if not table:
+        raise ValueError("csv_insert: missing required argument (table)")
+    if not filename:
+        raise ValueError("csv_insert: missing required argument (filename)")
+
+    cursor.execute(f"USE {database}")
+    with open(filename, "r") as csvfile:
+        csvreader = csv.reader(csvfile, delimiter=",", quotechar='"')
+        fields = next(csvreader)  # header row
+        for row in csvreader:
+            values = "','".join(row)
+            sql_command = f"INSERT INTO {table} ({','.join(fields)}) VALUES ('{values}')"
+            cursor.execute(sql_command)
+    cursor.commit()
 
 
 def database_create(*, cursor=None, database=None, drop=False, setup=None):
@@ -55,7 +89,7 @@ def database_print(*, cursor=None, database=None):
         print(f"{table} table: {', '.join(table_columns(cursor=cursor, table=table))}")
 
 
-def table_columns(*, cursor=None, table=None, database=None):
+def table_columns(*, cursor=None,  database=None, table=None):
     """Returns a list of the column names for a table.
     """
     if not cursor:
@@ -71,19 +105,19 @@ def table_columns(*, cursor=None, table=None, database=None):
     return [result[3] for result in results]
 
 
-def table_print(*, table=None, cursor=None, database=None, title=None, rows=10):
+def table_print(*, cursor=None, database=None, table=None, title=None, rows=10):
     """Print contents of a table or cursor to the console. This is for quick
     printing of small result sets for diagnostic purposes, may not work well
     with a large numbers of columns.
 
     Args:
+        cursor: a cursor from a pyodbc connection; if table is provided, a
+                SELECT * FROM <table> will be executed in this cursor; if table
+                is not provided, the cursor should contain a result set (i.e.,
+                the most recent SQL query was a SELECT.
+        database: database name for the table (optional)
         table: name of table to be printed; if not provided, the result set
                in the cursor will be printed.
-        cursor: a cursor from a pyodbc connection; if table is provided, a
-                SELECT * will be executed in this cursor; if table is not
-                provided, the cursor should contain a result set (i.e., the
-                most recent SQL query was a SELECT.
-        database: database name for the table (optional)
         title: optional title
         rows: maximum number of rows to print
     """
