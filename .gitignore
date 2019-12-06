@@ -3,6 +3,7 @@ __pycache__/
 archive/
 research_pocs/
 _todo.txt
+.gitignore
 *.bat
 *.exe
 *.json
